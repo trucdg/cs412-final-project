@@ -172,7 +172,7 @@ footer {
 }
 
 /* Table data cells */
-.games-table td, .bet-header td {
+.games-table td {
     padding: 1em;
     text-align: center;
     border: 1px solid #333;
@@ -410,12 +410,6 @@ table {
 }
 
 /* BET LIST */
-.bet-header {
-    text-align: center;
-    font-size: 2rem;
-    color: #48b882;
-}
-
 
 .create-bet-form {
     margin-bottom: 20px;
