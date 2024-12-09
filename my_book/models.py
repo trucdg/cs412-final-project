@@ -62,7 +62,9 @@ class Player(models.Model):
             self.parlay4_bets,
         ]:
             for bet in bet_model.all():
-                total_payout += bet.calculate_payout()
+                payout = bet.calculate_payout()
+                if payout:
+                    total_payout += bet.calculate_payout()
 
         self.total_payout = total_payout
         self.save()
