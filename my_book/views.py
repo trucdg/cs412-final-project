@@ -12,7 +12,7 @@ from django.views.generic import (
 from django.views import View
 from .models import Player, Game, Bet, SingleBet
 from .models import Straight, Action, Parlay3, Parlay4
-from .forms import BetTypeForm, SingleBetForm, GameForm, PlayerForm
+from .forms import BetTypeForm, SingleBetForm, GameForm, PlayerForm, BetTypeFilterForm
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.safestring import mark_safe
 import json
@@ -178,7 +178,13 @@ class BetListView(ListView):
 
         return all_bets
 
-    def get_context_data(self, bet_type_form=None, single_bet_forms=None, **kwargs):
+    def get_context_data(
+        self,
+        bet_type_form=None,
+        single_bet_forms=None,
+        bet_type_filter_form=None,
+        **kwargs,
+    ):
         """
         Pass in extra data to use in the templates:
         - bet_type_form = BetTypeForm() is used to create a new bet in that type
@@ -192,16 +198,22 @@ class BetListView(ListView):
         if single_bet_forms is None:
             single_bet_forms = self.SingleBetFormSet()
 
+        # create the filter form instance
+        if bet_type_filter_form is None:
+            bet_type_filter_form = BetTypeFilterForm()
+
         # Fetch all available games
         games = Game.objects.all().values(
             "id", "team_a", "team_b", "game_date", "fav_spread", "over_under_points"
         )
 
         # Flatten the bet objects into a list with global index
-        bets_flat = self._get_flat_bet_list()
+        bet_type_filter = self.request.GET.get("bet_type_filter")
+        bets_flat = self._get_flat_bet_list(bet_type_filter)
 
         context["bet_type_form"] = bet_type_form
         context["single_bet_forms"] = single_bet_forms
+        context["bet_type_filter_form"] = bet_type_filter_form
         context["bets_flat"] = bets_flat
         context["games_json"] = mark_safe(
             json.dumps(list(games), cls=DjangoJSONEncoder)
@@ -420,20 +432,33 @@ class BetListView(ListView):
         )
         return render(self.request, self.template_name, context)
 
-    def _get_flat_bet_list(self):
+    def _get_flat_bet_list(self, bet_type_filter=None):
         """
         Flatten the bet list for context.
+        Args:
+            bet_type_filter (str): Filter to display specific bet type or None for all types.
+        Returns:
+            List[dict]: Flattened list of bets with details.
         """
-        bets = {
+        bet_querysets = {
             "Straight": Straight.objects.all(),
             "Action": Action.objects.all(),
             "Parlay3": Parlay3.objects.all(),
             "Parlay4": Parlay4.objects.all(),
         }
 
+        # Filter querysets if bet_type_filter is provided
+        if bet_type_filter is not None and bet_type_filter != "":
+            bet_querysets = {
+                bet_type: queryset
+                for bet_type, queryset in bet_querysets.items()
+                if bet_type == bet_type_filter
+            }
+
+        # Flatten bets into a single list
         bets_flat = []
         index = 1
-        for bet_type, bet_list in bets.items():
+        for bet_type, bet_list in bet_querysets.items():
             for bet in bet_list:
                 # Extract single bets dynamically
                 single_bets = []

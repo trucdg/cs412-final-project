@@ -96,7 +96,7 @@ class BetTypeFilterForm(forms.Form):
         ("Parlay4", "Parlay4"),
     ]
 
-    bet_type = forms.ChoiceField(
+    bet_type_filter = forms.ChoiceField(
         choices=BET_TYPE_CHOICES,
         required=False,
         widget=forms.Select(

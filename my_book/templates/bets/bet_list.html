@@ -55,7 +55,7 @@
     <!-- Form to filter displaying bets -->
     <div class="bet-type-filter-form">
         <form method="get" action="{% url 'bet-list' %}">
-            {{ form.as_p }}
+            {{ bet_type_filter_form.as_p }}
             <button type="submit" class="btn btn-primary">Filter</button>
         </form>
     </div>
