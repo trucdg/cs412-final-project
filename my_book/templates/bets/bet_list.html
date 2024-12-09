@@ -100,8 +100,12 @@
                         <br>
                         <!-- Display Outcome -->
                         {% with outcome=bet.single_bet1.determine_outcome %}
-                            {% if outcome in "Win Loss Tie" %}
-                                <small>{{ outcome }}</small>
+                            {% if outcome == "Win" %}
+                                <small class="text-green">{{ outcome }}</small>
+                            {% elif outcome == "Loss" %}
+                                <small class="text-red">{{ outcome }}</small>
+                            {% elif outcome == "Tie" %}
+                                <small class="text-white">{{ outcome }}</small>
                             {% else %}
                                 <small class="text-yellow">Pending</small>
                             {% endif %}
@@ -122,10 +126,14 @@
                         <br>
                         <!-- Display Outcome -->
                         {% with outcome=bet.single_bet2.determine_outcome %}
-                            {% if outcome in "Win Loss Tie" %}
-                                <small>{{ outcome }}</small>
+                            {% if outcome == "Win" %}
+                                <small class="text-green">{{ outcome }}</small>
+                            {% elif outcome == "Loss" %}
+                                <small class="text-red">{{ outcome }}</small>
+                            {% elif outcome == "Tie" %}
+                                <small class="text-white">{{ outcome }}</small>
                             {% else %}
-                            <small class="text-yellow">Pending</small>
+                                <small class="text-yellow">Pending</small>
                             {% endif %}
                         {% endwith %}
                     {% else %}
@@ -144,8 +152,12 @@
                         <br>
                         <!-- Display Outcome -->
                         {% with outcome=bet.single_bet3.determine_outcome %}
-                            {% if outcome in "Win Loss Tie" %}
-                                <small>{{ outcome }}</small>
+                            {% if outcome == "Win" %}
+                                <small class="text-green">{{ outcome }}</small>
+                            {% elif outcome == "Loss" %}
+                                <small class="text-red">{{ outcome }}</small>
+                            {% elif outcome == "Tie" %}
+                                <small class="text-white">{{ outcome }}</small>
                             {% else %}
                                 <small class="text-yellow">Pending</small>
                             {% endif %}
@@ -166,8 +178,12 @@
                         <br>
                         <!-- Display Outcome -->
                         {% with outcome=bet.single_bet4.determine_outcome %}
-                            {% if outcome in "Win Loss Tie" %}
-                                <small>{{ outcome }}</small>
+                            {% if outcome == "Win" %}
+                                <small class="text-green">{{ outcome }}</small>
+                            {% elif outcome == "Loss" %}
+                                <small class="text-red">{{ outcome }}</small>
+                            {% elif outcome == "Tie" %}
+                                <small class="text-white">{{ outcome }}</small>
                             {% else %}
                                 <small class="text-yellow">Pending</small>
                             {% endif %}

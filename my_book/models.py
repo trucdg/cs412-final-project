@@ -206,6 +206,7 @@ class SingleBet(models.Model):
         Determine if bet is Win, Loss or Tie
         Returns:
         - 'Win', 'Loss', or 'Tie'
+        - 'Pending' if no points available yet
         - 'Invalid' if the bet or game state is invalid
         """
         if not self.game:
@@ -292,6 +293,7 @@ class Straight(Bet):
         - Win: 1
         - Tie: 0
         - Loss: -1
+        - Pending if no points available yet, return None
         If Loss, need to pay 5% commission
         """
         # Get the outcome from the single bet
@@ -304,6 +306,8 @@ class Straight(Bet):
             multiplier = Decimal(0)
         elif outcome == "Loss":
             multiplier = Decimal(-1.05)  # includes 5% comission
+        elif outcome == "Pending":
+            return None
         else:
             raise ValueError("Invalid outcome for the bet.")
 
@@ -346,6 +350,7 @@ class Action(Bet):
         1:0 -  {"Tie", "Tie"}
         1:(-1.1) - if either single bets outcome are "Loss",
                    a (-1.1) multiplier is appliedto pay 10% commission.
+        return: None if any single bet is "Pending"
         """
 
         # Determine outcomes of both single bets
@@ -361,6 +366,8 @@ class Action(Bet):
             multiplier = Decimal(2)
         elif outcome1 == "Tie" and outcome2 == "Tie":
             multiplier = Decimal(0)
+        elif outcome1 == "Pending" or outcome2 == "Pending":
+            return None
         else:
             raise ValueError("Invalid outcomes for the bets.")
 
@@ -418,6 +425,8 @@ class Parlay3(Bet):
             1:1 -  {"Win", "Tie", "Tie"}
             1:0 -  {"Tie", "Tie", "Tie"}
             1:(-1) - if any single bets outcome is "Loss",
+        Return:
+            None if any single bet is "Pending"
         """
 
         # Determine outcomes of all three single bets
@@ -438,6 +447,8 @@ class Parlay3(Bet):
             multiplier = Decimal(1)  # One win, two ties
         elif outcome1 == "Tie" and outcome2 == "Tie" and outcome3 == "Tie":
             multiplier = Decimal(0)  # All bets tie
+        elif outcome1 == "Pending" or outcome2 == "Pending" or outcome3 == "Pending":
+            return None
         else:
             raise ValueError("Invalid outcome combination for the parlay bet.")
 
@@ -496,6 +507,7 @@ class Parlay4(Bet):
             1:1  -  {"Win", "Tie", "Tie", "Tie"}
             1:0  -  {"Tie", "Tie", "Tie", "Tie"}
             1:(-1) - if any single bets outcome is "Loss",
+        Return None if any single bet is "Pending"
         """
         # Determine outcomes of all four single bets
         outcome1 = self.single_bet1.determine_outcome()
@@ -543,6 +555,8 @@ class Parlay4(Bet):
             and outcome4 == "Tie"
         ):
             multiplier = Decimal(0)  # All bets tie
+        elif outcome1 == "Pending" or outcome2 == "Pending" or outcome3 == "Pending":
+            return None
         else:
             raise ValueError("Invalid outcome combination for the parlay bet.")
 

@@ -432,9 +432,6 @@ table {
 }
 
 /* Styling for the bet table */
-.bet-table small {
-    color: #48b882;
-}
 
 .bet-table td.align-right {
     text-align: right;
@@ -476,4 +473,8 @@ table {
 
 .text-yellow {
     color: rgb(230, 230, 6);
+}
+
+.text-white {
+    color: #fff;
 }
