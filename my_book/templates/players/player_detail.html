@@ -1,0 +1,12 @@
+{% extends "my_book/base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ player.name }}</h2>
+    <p>Total Betting Money: ${{ player.total_betting_money }}</p>
+    <p>Total Payout: ${{ player.total_payout }}</p>
+    <a href="{% url 'player-edit' player.pk %}" class="btn-secondary">Edit</a>
+    <a href="{% url 'player-delete' player.pk %}" class="btn-secondary-delete">Delete</a>
+</div>
+
+{% endblock %}

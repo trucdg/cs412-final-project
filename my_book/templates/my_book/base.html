@@ -1,0 +1,33 @@
+<!--templates/my_book/base.html  -->
+
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuckyBook</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body class="dark-mode">
+    <header>
+        <div class="logo">LuckyBook</div>
+        <nav>
+            <ul>
+                <li><a href="{% url 'home' %}">Home</a></li>
+                <li><a href="{% url 'game-list' %}">Games</a></li>
+                <li><a href="{% url 'player-list' %}">Players</a></li>
+                <li><a href="{% url 'bet-list' %}">Bets</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+    <footer>
+        <p>© 2024 LuckyBook. All rights reserved.</p>
+    </footer>
+</body>
+</html>
