@@ -1,8 +1,12 @@
 {% extends 'my_book/base.html' %}
 
 {% block content %}
-    <div class="container">
-        <h1 class="page-title">Insights</h1>
-        <p>Hello</p>
+    <div class="container mt-5">
+        <h1 class="page-title">Betting Insights</h1>
+
+        <!-- Bets Type Bar Graph -->
+        <div id="bets-bar-graph" style="width: 70%; margin: 0 auto;">
+            {{ bets_bar_graph|safe }}
+        </div>
     </div>
 {% endblock %}

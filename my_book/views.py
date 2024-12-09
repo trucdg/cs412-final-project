@@ -18,6 +18,7 @@ from django.utils.safestring import mark_safe
 import json
 from itertools import chain
 from operator import attrgetter
+from .utils import *
 
 
 class HomeView(TemplateView):
@@ -549,3 +550,10 @@ class CalculatePayoutView(View):
 
 class InsightsView(TemplateView):
     template_name = "insights/insights_page.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Generate the bar graph
+        context["bets_bar_graph"] = generate_bets_bar_graph()
+        return context
