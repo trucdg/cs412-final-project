@@ -160,7 +160,7 @@ class Game(models.Model):
             or self.over_under_points == Decimal(0)
         ):
             print(
-                "Game.determne_winner(): total_points or over_under_points are not available."
+                "Game.determine_winner(): total_points or over_under_points are not available."
             )
             return None
 
@@ -221,7 +221,9 @@ class SingleBet(models.Model):
                 return "Loss"
         elif self.single_bet_type == "OVER-UNDER":
             over_under_outcome = self.game.determine_over_under()
-            if over_under_outcome == "Tie":
+            if over_under_outcome is None:
+                return "Pending"
+            elif over_under_outcome == "Tie":
                 return "Tie"
             elif over_under_outcome == "Over" and self.is_over:
                 return "Win"
