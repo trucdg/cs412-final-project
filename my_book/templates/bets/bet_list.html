@@ -52,20 +52,30 @@
 
     <h1 class="bet-header" style="color:#48b882; ">Current Bets</h1>
     
+
     <!-- Form to filter displaying bets -->
     <div class="bet-type-filter-form">
         <form method="get" action="{% url 'bet-list' %}">
-            {{ bet_type_filter_form.as_p }}
-            <button type="submit" class="btn btn-primary">Filter</button>
+            <fieldset>
+                <legend>Filter Bets by Type</legend>
+                <div class="form-inline">
+                    {{ bet_type_filter_form.as_p }}
+                    <button type="submit" class="btn btn-filter">Apply Filter</button>
+                    <button type="reset" class="btn btn-clear">Clear</button>
+                </div>
+            </fieldset>
         </form>
     </div>
 
 
     <!-- Form to trigger payout calculation -->
-    <form method="post" action="{% url 'calculate-payout' %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-primary">Calculate Payout</button>
-    </form>
+    <div class="payout-button-container">
+        <form method="post" action="{% url 'calculate-payout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-calculate-payout">Calculate Payout</button>
+        </form>
+    </div>
+
 
     <!-- Display all bets in a table -->
     <table class="bet-table">

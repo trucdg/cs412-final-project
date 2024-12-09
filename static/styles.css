@@ -431,6 +431,106 @@ table {
     margin-bottom: 10px;
 }
 
+/* Bet TYPE FILTER form */
+.bet-type-filter-form {
+    background-color: #2c3e50; 
+    color: #ecf0f1;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Fieldset and legend styles */
+.bet-type-filter-form fieldset {
+    border: 1px solid #48b882;
+    border-radius: 6px;
+    padding: 15px;
+}
+
+.bet-type-filter-form legend {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #48b882;
+    margin-bottom: 10px;
+}
+
+/* Flexbox container for inline layout */
+.bet-type-filter-form .form-inline {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between inputs and buttons */
+}
+
+/* Input and select styling */
+.bet-type-filter-form input,
+.bet-type-filter-form select {
+    flex: 1; /* Input field takes up available space */
+    padding: 8px 10px;
+    font-size: 1rem;
+    color: #2c3e50;
+    background-color: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+}
+
+/* Buttons styling */
+.bet-type-filter-form .btn {
+    padding: 8px 12px;
+    font-size: 1rem;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.bet-type-filter-form .btn-filter {
+    background-color: #48b882;
+    color: #000000;
+}
+
+.bet-type-filter-form .btn-filter:hover {
+    background-color: #3a946e;
+}
+
+.bet-type-filter-form .btn-clear {
+    background-color: #888888;
+    color: #ecf0f1;
+}
+
+.bet-type-filter-form .btn-clear:hover {
+    background-color: #5d5d5d;
+}
+
+/* Calculate Payout button */
+.payout-button-container {
+    display: flex;
+    justify-content: center; 
+    align-items: center;
+    margin: 2em 0;
+}
+
+.btn-calculate-payout {
+    background-color: #48b882; 
+    color: #ecf0f1; 
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding: 12px 20px; 
+    border: none; 
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+    cursor: pointer; 
+    transition: background-color 0.3s ease, transform 0.2s ease; 
+}
+
+.btn-calculate-payout:hover {
+    background-color: #3a946e;
+    transform: translateY(-2px);
+}
+
+
 /* Styling for the bet table */
 
 .bet-table td.align-right {
