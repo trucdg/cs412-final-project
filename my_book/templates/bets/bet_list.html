@@ -46,9 +46,20 @@
             <button type="submit" class="btn-primary">Submit</button>
         </form>
     </div>
+    <hr>
+    
     
 
-    <h1 class="bet-header" style="color:#48b882; ">All Bets</h1>
+    <h1 class="bet-header" style="color:#48b882; ">Current Bets</h1>
+    
+    <!-- Form to filter displaying bets -->
+    <div class="bet-type-filter-form">
+        <form method="get" action="{% url 'bet-list' %}">
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+    </div>
+
 
     <!-- Form to trigger payout calculation -->
     <form method="post" action="{% url 'calculate-payout' %}">

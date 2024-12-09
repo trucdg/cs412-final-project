@@ -84,3 +84,22 @@ class Parlay4BetForm(forms.ModelForm):
     class Meta:
         model = Parlay4
         fields = ["bet_amount"]
+
+
+# Searching and Filtering Data
+class BetTypeFilterForm(forms.Form):
+    BET_TYPE_CHOICES = [
+        ("", "All"),  # Option for displaying all bets
+        ("Straight", "Straight"),
+        ("Action", "Action"),
+        ("Parlay3", "Parlay3"),
+        ("Parlay4", "Parlay4"),
+    ]
+
+    bet_type = forms.ChoiceField(
+        choices=BET_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(
+            attrs={"class": "form-control", "id": "bet-type-filter-form"}
+        ),
+    )

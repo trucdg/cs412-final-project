@@ -160,6 +160,10 @@ class BetListView(ListView):
     SingleBetFormSet = formset_factory(SingleBetForm, extra=0)
 
     def get_queryset(self):
+        """
+        We define a get_queryset() for ListView
+        However, in the template, we display bets from the bets_flat list made by _get_flat_bet_list
+        """
         # Fetch all bets from different models
         straight_bets = Straight.objects.all()
         action_bets = Action.objects.all()
@@ -175,6 +179,11 @@ class BetListView(ListView):
         return all_bets
 
     def get_context_data(self, bet_type_form=None, single_bet_forms=None, **kwargs):
+        """
+        Pass in extra data to use in the templates:
+        - bet_type_form = BetTypeForm() is used to create a new bet in that type
+        - bet_type_filter_form = BetTypeFilterForm() is used to filter the displaying results by bet type
+        """
         context = super().get_context_data(**kwargs)
 
         # if default forms are not provided, create new
@@ -301,7 +310,6 @@ class BetListView(ListView):
         This checks the bet type and deletes from the correct model.
         """
 
-        print("IN DELETE BET")
         if request.method != "POST":
             print("BetListView.delete_bet(): NOT a POST request!")
             return redirect("bet-list")
