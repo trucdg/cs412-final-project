@@ -45,6 +45,10 @@ class Player(models.Model):
         total_betting_money += self.parlay4_bets.aggregate(total=Sum("bet_amount"))[
             "total"
         ] or Decimal(0)
+
+        self.total_betting_money = total_betting_money
+        self.save()
+
         return total_betting_money
 
     def calculate_total_payout(self):
@@ -59,6 +63,9 @@ class Player(models.Model):
         ]:
             for bet in bet_model.all():
                 total_payout += bet.calculate_payout()
+
+        self.total_payout = total_payout
+        self.save()
         return total_payout
 
 
@@ -146,11 +153,18 @@ class Game(models.Model):
         - 'Over', 'Under' or 'Tie' if total points for both team == over_under_points
         - None if total_points are not available
         """
-        if self.total_points is None or self.over_under_points is None:
+        if (
+            self.total_points is None
+            or self.total_points == Decimal(0)
+            or self.over_under_points is None
+            or self.over_under_points == Decimal(0)
+        ):
             print(
                 "Game.determne_winner(): total_points or over_under_points are not available."
             )
             return None
+
+        # here, self.total_points != 0.00 (default value)
         if self.total_points > self.over_under_points:
             return "Over"
         elif self.total_points < self.over_under_points:

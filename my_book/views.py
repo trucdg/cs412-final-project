@@ -48,6 +48,11 @@ class PlayerListView(ListView):
         # Fetch all players with their calculated fields
         players = Player.objects.all()
 
+        # update all calculated money
+        for player in players:
+            player.calculate_total_betting_money()
+            player.calculate_total_payout()
+
         context["players"] = players
 
         return context

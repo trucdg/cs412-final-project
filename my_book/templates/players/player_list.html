@@ -38,11 +38,11 @@
                             {{ player.name }}
                             </a>
                         </td>
-                        <td style="text-align: right;">{{ player.calculate_total_betting_money }}</td>
+                        <td style="text-align: right;">{{ player.total_betting_money }}</td>
                         <td style="text-align: right;">
                             <span 
-                                class="{% if player.calculate_total_payout < 0 %}text-red{% else %}text-green{% endif %}">
-                                {{ player.calculate_total_payout }}
+                                class="{% if player.total_payout < 0 %}text-red{% else %}text-green{% endif %}">
+                                {{ player.total_payout }}
                             </span>
                         </td>
                         <td>{{ player.get_straight_bet_count }}</td>
