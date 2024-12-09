@@ -315,6 +315,8 @@ class Straight(Bet):
         elif outcome == "Loss":
             multiplier = Decimal(-1.05)  # includes 5% comission
         elif outcome == "Pending":
+            self.payout = None
+            self.save()
             return None
         else:
             raise ValueError("Invalid outcome for the bet.")
@@ -375,6 +377,8 @@ class Action(Bet):
         elif outcome1 == "Tie" and outcome2 == "Tie":
             multiplier = Decimal(0)
         elif outcome1 == "Pending" or outcome2 == "Pending":
+            self.payout = None
+            self.save()
             return None
         else:
             raise ValueError("Invalid outcomes for the bets.")
@@ -456,6 +460,8 @@ class Parlay3(Bet):
         elif outcome1 == "Tie" and outcome2 == "Tie" and outcome3 == "Tie":
             multiplier = Decimal(0)  # All bets tie
         elif outcome1 == "Pending" or outcome2 == "Pending" or outcome3 == "Pending":
+            self.payout = None
+            self.save()
             return None
         else:
             raise ValueError("Invalid outcome combination for the parlay bet.")
@@ -563,7 +569,14 @@ class Parlay4(Bet):
             and outcome4 == "Tie"
         ):
             multiplier = Decimal(0)  # All bets tie
-        elif outcome1 == "Pending" or outcome2 == "Pending" or outcome3 == "Pending":
+        elif (
+            outcome1 == "Pending"
+            or outcome2 == "Pending"
+            or outcome3 == "Pending"
+            or outcome4 == "Pending"
+        ):
+            self.payout = None
+            self.save()
             return None
         else:
             raise ValueError("Invalid outcome combination for the parlay bet.")
