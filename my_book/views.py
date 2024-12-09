@@ -230,7 +230,6 @@ class BetListView(ListView):
 
         # handle bet DELETION
         if "delete_bet_pk" in request.POST:
-            print("IN DELETE BET")
             return self.delete_bet(request)
 
         bet_type_form = BetTypeForm(request.POST)
