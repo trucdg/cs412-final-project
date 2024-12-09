@@ -499,12 +499,6 @@ class BetListView(ListView):
         return ""
 
 
-class BetDetailView(DetailView):
-    model = Bet
-    template_name = "bets/bet_detail.html"
-    context_object_name = "bet"
-
-
 class BetUpdateView(UpdateView):
     model = Bet
     template_name = "bets/bet_form.html"
@@ -551,3 +545,7 @@ class CalculatePayoutView(View):
 
         # Redirect back to the bet list page
         return redirect("bet-list")
+
+
+class InsightsView(TemplateView):
+    template_name = "insights/insights_page.html"
