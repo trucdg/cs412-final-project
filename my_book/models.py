@@ -125,14 +125,21 @@ class Game(models.Model):
         - 'Tie' otherwise
         - None if no result is available
         """
-        if self.score_team_a is None or self.score_team_b is None:
+        if (
+            self.score_team_a is None
+            or self.score_team_b is None
+            or (
+                self.score_team_a == 0.00
+                and self.score_team_b == 0.00  # when game hasn't started
+            )
+        ):
             return None  # Scores not available
 
         # Adjust scores based on the favorite and underdog
-        if self.fav == self.team_a:
+        if self.fav.lower() == self.team_a.lower():
             adjusted_team_a_score = self.score_team_a - self.fav_spread
             adjusted_team_b_score = self.score_team_b
-        elif self.fav == self.team_b:
+        elif self.fav.lower() == self.team_b.lower():
             adjusted_team_a_score = self.score_team_a
             adjusted_team_b_score = self.score_team_b - self.fav_spread
         else:
@@ -155,13 +162,11 @@ class Game(models.Model):
         """
         if (
             self.total_points is None
-            or self.total_points == Decimal(0)
+            or self.total_points == Decimal(0.00)
             or self.over_under_points is None
-            or self.over_under_points == Decimal(0)
+            or self.over_under_points == Decimal(0.00)
         ):
-            print(
-                "Game.determine_winner(): total_points or over_under_points are not available."
-            )
+            print(f"Game.determine_winner(): {self} points not available yet.")
             return None
 
         # here, self.total_points != 0.00 (default value)
@@ -214,12 +219,15 @@ class SingleBet(models.Model):
 
         if self.single_bet_type == "WINNER":
             winner = self.game.determine_winner()
-            if winner == "Tie":
-                return "Tie"
-            elif winner == self.selected_team:
-                return "Win"
+            if winner:
+                if winner == "Tie":
+                    return "Tie"
+                elif winner.lower() == self.selected_team.lower():
+                    return "Win"
+                else:
+                    return "Loss"
             else:
-                return "Loss"
+                return "Pending"
         elif self.single_bet_type == "OVER-UNDER":
             over_under_outcome = self.game.determine_over_under()
             if over_under_outcome is None:
