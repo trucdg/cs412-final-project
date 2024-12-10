@@ -4,7 +4,6 @@ from django.forms import formset_factory
 from django.views.generic import (
     ListView,
     DetailView,
-    CreateView,
     UpdateView,
     DeleteView,
     TemplateView,
@@ -500,23 +499,9 @@ class BetListView(ListView):
         return ""
 
 
-class BetUpdateView(UpdateView):
-    model = Bet
-    template_name = "bets/bet_form.html"
-    fields = ["player", "bet_type", "bet_list", "bet_amount", "payout", "outcome"]
-    success_url = reverse_lazy("bet-list")
-
-
 class BetDeleteView(DeleteView):
     model = Bet
     template_name = "bets/bet_confirm_delete.html"
-    success_url = reverse_lazy("bet-list")
-
-
-class BetCreateView(CreateView):
-    model = Bet
-    template_name = "bets/bet_form.html"
-    fields = ["player", "bet_type", "bet_list", "bet_amount", "payout", "outcome"]
     success_url = reverse_lazy("bet-list")
 
 
