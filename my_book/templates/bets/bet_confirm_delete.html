@@ -1,0 +1,31 @@
+{% extends "my_book/base.html" %}
+
+{% block content %}
+  <div class="container">
+    <h1>Confirm Bet Deletion</h1>
+    
+    <p>Are you sure you want to delete the following bet?</p>
+    
+    <table class="table">
+        <tr>
+            <th>Player</th>
+            <td>{{ bet.player }}</td>
+        </tr>
+       <tr>
+            <th>Bet Type</th>
+            <td>{{ bet_type }}</td>
+        </tr>
+
+        <tr>
+            <th>Amount</th>
+            <td>{{ bet.amount }}</td>
+        </tr>
+    </table>
+
+    <form method="POST">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary-delete">Yes, Delete</button>
+      <a href="{% url 'bet-list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

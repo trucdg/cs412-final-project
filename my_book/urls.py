@@ -10,9 +10,7 @@ from .views import (
     GameUpdateView,
     GameDeleteView,
     BetListView,
-    BetCreateView,
-    BetUpdateView,
-    BetDeleteView,
+    delete_bet,
     CalculatePayoutView,
     insights_page,
 )
@@ -35,9 +33,7 @@ urlpatterns = [
     path("games/<int:pk>/delete/", GameDeleteView.as_view(), name="game-delete"),
     # Bet URLs
     path("bets/", BetListView.as_view(), name="bet-list"),
-    path("bets/add/", BetCreateView.as_view(), name="bet-create"),
-    path("bets/<int:pk>/edit/", BetUpdateView.as_view(), name="bet-update"),
-    path("bets/<int:pk>/delete/", BetDeleteView.as_view(), name="bet-delete"),
+    path("bet/<str:bet_type>/<int:bet_id>/delete/", delete_bet, name="bet-delete"),
     # Calculate Payout
     path("calculate-payout/", CalculatePayoutView.as_view(), name="calculate-payout"),
     # Insights page

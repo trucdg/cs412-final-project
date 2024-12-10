@@ -230,7 +230,9 @@ class BetListView(ListView):
 
         # handle bet DELETION
         if "delete_bet_pk" in request.POST:
-            return self.delete_bet(request)
+            delete_bet_id = request.POST.get("delete_bet_pk")
+            delete_bet_type = request.POST.get("delete_bet_type")
+            return self.delete_bet(request, delete_bet_type, delete_bet_id)
 
         bet_type_form = BetTypeForm(request.POST)
         single_bet_forms = self.SingleBetFormSet(request.POST)
@@ -315,7 +317,7 @@ class BetListView(ListView):
         # Redirect to refresh the page
         return redirect(reverse("bet-list"))
 
-    def delete_bet(self, request):
+    def delete_bet(self, request, bet_type, bet_id):
         """
         Handle bet deletion
         This checks the bet type and deletes from the correct model.
@@ -499,10 +501,47 @@ class BetListView(ListView):
         return ""
 
 
-class BetDeleteView(DeleteView):
-    model = Bet
-    template_name = "bets/bet_confirm_delete.html"
-    success_url = reverse_lazy("bet-list")
+def delete_bet(self, request, bet_type, bet_id):
+    """
+    this is a function based view that shows the bet delete confirmation page
+    """
+    try:
+        # Determine the model based on bet type and get the bet instance
+        if bet_type == "Straight":
+            bet = get_object_or_404(Straight, id=bet_id)
+        elif bet_type == "Action":
+            bet = get_object_or_404(Action, id=bet_id)
+        elif bet_type == "Parlay3":
+            bet = get_object_or_404(Parlay3, id=bet_id)
+        elif bet_type == "Parlay4":
+            bet = get_object_or_404(Parlay4, id=bet_id)
+        else:
+            print("delete_bet(): Invalid bet type")
+            return redirect("bet-list")
+
+        if request.method == "POST":
+            # Perform the deletion if user confirms delete
+            bet.delete()
+            print(f"{bet_type}(pk={bet_id}) bet deleted successfully.")
+            return redirect(reverse("bet-list"))
+
+    except Exception as e:
+        print(f"delete_bet(): Error {str(e)}")
+
+    return render(
+        request,
+        "bet_confirm_delete.html",
+        {
+            "bet": bet,
+            "bet_type": bet_type,
+        },
+    )
+
+
+# class BetDeleteView(DeleteView):
+#     model = Bet
+#     template_name = "bets/bet_confirm_delete.html"
+#     success_url = reverse_lazy("bet-list")
 
 
 class CalculatePayoutView(View):
