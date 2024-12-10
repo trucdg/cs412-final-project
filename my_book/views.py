@@ -319,50 +319,6 @@ class BetListView(ListView):
         # Redirect to refresh the page
         return redirect(reverse("bet-list"))
 
-    def delete_bet(self, request, bet_type, bet_id):
-        """
-        Handle bet deletion
-        This checks the bet type and deletes from the correct model.
-        """
-
-        # if request.method != "POST":
-        #     print("BetListView.delete_bet(): NOT a POST request!")
-        #     return redirect("bet-list")
-
-        # # bet_id = request.POST.get("delete_bet_pk")
-        # if not bet_id:
-        #     print("BetListView.delete_bet(): bet_id is required")
-        #     return redirect("bet-list")
-
-        # #bet_type = request.POST.get("delete_bet_type")
-        # if not bet_type:
-        #     print("BetListView.delete_bet(): bet_type is required ")
-        #     return redirect("bet-list")
-
-        try:
-            # Determine the model based on bet type and get the bet instance
-            if bet_type == "Straight":
-                bet = get_object_or_404(Straight, id=bet_id)
-            elif bet_type == "Action":
-                bet = get_object_or_404(Action, id=bet_id)
-            elif bet_type == "Parlay3":
-                bet = get_object_or_404(Parlay3, id=bet_id)
-            elif bet_type == "Parlay4":
-                bet = get_object_or_404(Parlay4, id=bet_id)
-            else:
-                print("BetListView.delete_bet(): Invalid bet type")
-                return redirect("bet-list")
-
-            # Delete the bet instance
-            bet.delete()
-            print(f"{bet_type}(pk={bet_id}) bet deleted successfully.")
-
-        except Exception as e:
-            print(f"BetListView.delete_bet(): Error {str(e)}")
-
-        # Redirect to the bet list view
-        return redirect("bet-list")
-
     def create_bet(self, bet_type, player, bet_amount, single_bets):
         """
         Create a bet instance based on the bet_type and a list of SingleBet instances.
@@ -538,12 +494,6 @@ def delete_bet(request, bet_type, bet_id):
             "bet_type": bet_type,
         },
     )
-
-
-# class BetDeleteView(DeleteView):
-#     model = Bet
-#     template_name = "bets/bet_confirm_delete.html"
-#     success_url = reverse_lazy("bet-list")
 
 
 class CalculatePayoutView(View):
