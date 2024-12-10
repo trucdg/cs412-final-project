@@ -6,7 +6,7 @@ from .models import Straight, Action, Parlay3, Parlay4
 
 def generate_bet_type_comparison_graph():
     """
-    this bar graph compares the number of each bet type
+    This pie chart compares the number of each bet type
     """
     # Query the number of bets for each type
     straight_count = Straight.objects.count()
@@ -15,27 +15,30 @@ def generate_bet_type_comparison_graph():
     parlay4_count = Parlay4.objects.count()
     total_count = straight_count + action_count + parlay3_count + parlay4_count
 
-    # Prepare data for the bar graph
-    x = ["Straight", "Action", "Parlay3", "Parlay4"]
-    y = [straight_count, action_count, parlay3_count, parlay4_count]
+    # Prepare data for the pie chart
+    labels = ["Straight", "Action", "Parlay3", "Parlay4"]
+    values = [straight_count, action_count, parlay3_count, parlay4_count]
 
-    # Create the bar graph
+    # Create the pie chart
     fig = go.Figure(
         data=[
-            go.Bar(
-                x=x,
-                y=y,
-                marker=dict(color=["#636EFA", "#EF553B", "#00CC96", "#AB63FA"]),
+            go.Pie(
+                labels=labels,
+                values=values,
+                marker=dict(colors=["#636EFA", "#EF553B", "#00CC96", "#AB63FA"]),
+                hole=0.3,  # Adds a hole in the middle to make it a donut chart
+                textinfo="label+percent",  # Show percentage and label
             )
         ]
     )
 
-    graph_title = f"Number of Bets by Type (Total Bets = {total_count})"
+    graph_title = f"Distribution of Bets by Type (Total Bets = {total_count})"
 
     fig.update_layout(
         title=graph_title,
-        xaxis_title="Bet Type",
-        yaxis_title="Number of Bets",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(color="black"),
     )
 
     # Render the graph as an HTML div
