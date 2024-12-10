@@ -232,7 +232,9 @@ class BetListView(ListView):
         if "delete_bet_pk" in request.POST:
             delete_bet_id = request.POST.get("delete_bet_pk")
             delete_bet_type = request.POST.get("delete_bet_type")
-            return self.delete_bet(request, delete_bet_type, delete_bet_id)
+            return redirect(
+                reverse("bet-delete", args=[delete_bet_type, delete_bet_id])
+            )
 
         bet_type_form = BetTypeForm(request.POST)
         single_bet_forms = self.SingleBetFormSet(request.POST)
@@ -323,19 +325,19 @@ class BetListView(ListView):
         This checks the bet type and deletes from the correct model.
         """
 
-        if request.method != "POST":
-            print("BetListView.delete_bet(): NOT a POST request!")
-            return redirect("bet-list")
+        # if request.method != "POST":
+        #     print("BetListView.delete_bet(): NOT a POST request!")
+        #     return redirect("bet-list")
 
-        bet_id = request.POST.get("delete_bet_pk")
-        if not bet_id:
-            print("BetListView.delete_bet(): bet_id is required")
-            return redirect("bet-list")
+        # # bet_id = request.POST.get("delete_bet_pk")
+        # if not bet_id:
+        #     print("BetListView.delete_bet(): bet_id is required")
+        #     return redirect("bet-list")
 
-        bet_type = request.POST.get("delete_bet_type")
-        if not bet_type:
-            print("BetListView.delete_bet(): bet_type is required ")
-            return redirect("bet-list")
+        # #bet_type = request.POST.get("delete_bet_type")
+        # if not bet_type:
+        #     print("BetListView.delete_bet(): bet_type is required ")
+        #     return redirect("bet-list")
 
         try:
             # Determine the model based on bet type and get the bet instance
@@ -501,7 +503,7 @@ class BetListView(ListView):
         return ""
 
 
-def delete_bet(self, request, bet_type, bet_id):
+def delete_bet(request, bet_type, bet_id):
     """
     this is a function based view that shows the bet delete confirmation page
     """
@@ -530,7 +532,7 @@ def delete_bet(self, request, bet_type, bet_id):
 
     return render(
         request,
-        "bet_confirm_delete.html",
+        "bets/bet_confirm_delete.html",
         {
             "bet": bet,
             "bet_type": bet_type,
