@@ -14,7 +14,7 @@ from .views import (
     BetUpdateView,
     BetDeleteView,
     CalculatePayoutView,
-    InsightsView,
+    insights_page,
 )
 
 urlpatterns = [
@@ -41,5 +41,5 @@ urlpatterns = [
     # Calculate Payout
     path("calculate-payout/", CalculatePayoutView.as_view(), name="calculate-payout"),
     # Insights page
-    path("insights/", InsightsView.as_view(), name="insights"),
+    path("insights/", insights_page, name="insights"),
 ]

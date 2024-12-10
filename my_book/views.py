@@ -548,15 +548,18 @@ class CalculatePayoutView(View):
         return redirect("bet-list")
 
 
-class InsightsView(TemplateView):
-    template_name = "insights/insights_page.html"
+def insights_page(request):
+    # Generate the graph for comparing bet types
+    bet_type_graph = generate_bet_type_comparison_graph()
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    # Generate the graph for comparing money/payout for each bet type
+    money_payout_graph = generate_money_payout_comparison_graph()
 
-        # Bar graph compare the count of bet types
-        context["bets_type_graph"] = generate_bet_type_comparison_graph()
+    # Pass the context to the template
+    context = {
+        "bets_type_graph": bet_type_graph,
+        "money_payout_graph": money_payout_graph,
+    }
 
-        # Bar graph compare the money/ payout of each bet type
-        context["money_payout_graph"] = generate_money_payout_comparison_graph()
-        return context
+    # Render the template with the context data
+    return render(request, "insights/insights_page.html", context)
