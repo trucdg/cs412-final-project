@@ -554,6 +554,9 @@ class InsightsView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Generate the bar graph
-        context["bets_bar_graph"] = generate_bets_bar_graph()
+        # Bar graph compare the count of bet types
+        context["bets_bar_graph"] = generate_bet_type_comparison_graph()
+
+        # Bar graph compare the money/ payout of each bet type
+        context["money_payout_graph"] = generate_money_payout_comparison_graph()
         return context

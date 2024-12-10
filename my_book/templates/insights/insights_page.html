@@ -5,8 +5,20 @@
         <h1 class="page-title">Betting Insights</h1>
 
         <!-- Bets Type Bar Graph -->
-        <div id="bets-bar-graph" style="width: 70%; margin: 0 auto;">
-            {{ bets_bar_graph|safe }}
+        <div class="graph">
+            <div id="bets-type-bar-graph">
+                {{ bets_bar_graph|safe }}
+            </div>
         </div>
+
+
+        <!-- Money/ Payout Pie Graphs -->
+        <div class="graph">
+            <h3 class="text-center">Bet Amount vs Payout for Each Bet Type</h3>
+            <div id="money_payout_graph">
+                {{ money_payout_graph|safe }}
+            </div>
+        </div>
+
     </div>
 {% endblock %}
