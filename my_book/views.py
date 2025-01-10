@@ -557,8 +557,6 @@ def add_reviewed_games_to_db_view(request):
                         games_data.append({})
                     games_data[index][field_name] = value
 
-            print("in ADD, games_data=", games_data)
-
             # Validate and save each game entry
             saved_games = []
             default_logo = "https://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpghttps://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpg"
@@ -571,14 +569,14 @@ def add_reviewed_games_to_db_view(request):
                     defaults={
                         "league": game_data.get("league"),
                         "team_a_logo_url": (
-                            default_logo
+                            game_data.get("team_a_logo_url")
                             if game_data.get("team_a_logo_url") not in ["None", None]
-                            else game_data.get("team_a_logo_url")
+                            else default_logo
                         ),
                         "team_b_logo_url": (
-                            default_logo
+                            game_data.get("team_b_logo_url")
                             if game_data.get("team_b_logo_url") not in ["None", None]
-                            else game_data.get("team_b_logo_url")
+                            else default_logo
                         ),
                         "fav_spread": float(game_data.get("fav_spread")),
                         "over_under_points": float(game_data.get("over_under_points")),
