@@ -4,7 +4,7 @@
     <h1 class="page-title">Players</h1>
 
     <!-- Create Player Form -->
-    <div class="create-player-form">
+    <div class="form">
         <h2>Add Player</h2>
         <form method="POST" class="form-inline">
             {% csrf_token %}
@@ -38,11 +38,11 @@
                             {{ player.name }}
                             </a>
                         </td>
-                        <td style="text-align: right;">{{ player.total_betting_money }}</td>
+                        <td style="text-align: right;">{{ player.calculate_total_betting_money }}</td>
                         <td style="text-align: right;">
                             <span 
-                                class="{% if player.total_payout < 0 %}text-red{% else %}text-green{% endif %}">
-                                {{ player.total_payout }}
+                                class="{% if player.calculate_total_payout < 0 %}text-red{% else %}text-green{% endif %}">
+                                {{ player.calculate_total_payout }}
                             </span>
                         </td>
                         <td>{{ player.get_straight_bet_count }}</td>

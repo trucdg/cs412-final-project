@@ -6,7 +6,7 @@
     <h1 class="page-title">Bet List</h1>
 
     <!-- Form to create a new bet -->
-    <div class="create-bet-form">
+    <div class="form">
         <h2>Create a New Bet</h2>
         <form method="post" id="bet-form" action="{% url 'bet-list' %}">
             {% csrf_token %}
@@ -76,9 +76,9 @@
 
 
     <!-- Display all bets in a table -->
-    <table class="bet-table">
+    <table class="table">
         <thead>
-            <tr class="bet-table-header">
+            <tr>
                 <th>#</th>
                 <th>Player</th>
                 <th>Bet Amount</th>
@@ -92,7 +92,11 @@
             {% for bet in bets_flat %}
             <tr class="table-row">
                 <td class="align-center">{{ bet.index }}</td>
-                <td>{{ bet.player_name }}</td>
+                <td>
+                    <a href="{% url 'player-detail' bet.player_id %}" class="player-name-link">
+                        {{ bet.player_name }}
+                    </a>
+                </td>
                 <td class="align-right">{{ bet.amount }}</td>
                 <!-- Display Payout -->
                 <td class="align-right">
@@ -218,7 +222,7 @@
                         {% csrf_token %}
                         <input type="hidden" name="delete_bet_pk" value="{{ bet.bet_pk }}">
                         <input type="hidden" name="delete_bet_type" value="{{  bet.bet_type }}">
-                        <button type="submit" class="bet-delete-btn">Delete</button>
+                        <button type="submit" class="sml-delete-btn">Delete</button>
                     </form>
                 </td>
             </tr>
@@ -331,7 +335,7 @@
             // Generate options for the game dropdown
             let gameOptions = `<option value="">Pick a game</option>`;
             games.forEach(game => {
-                gameOptions += `<option value="${game.id}">${game.team_a}@${game.team_b} (fav: -${game.fav_spread}, O/U: ${game.over_under_points})</option>`;
+                gameOptions += `<option value="${game.id}">${game.name} (fav: -${game.fav_spread}, O/U: ${game.over_under_points})</option>`;
             });
 
             const formHtml = `
@@ -350,13 +354,56 @@
                     </select>
 
                     <label for="id_single_bet_${i}_selected_team">Selected Team:</label>
-                    <input type="text" name="single_bet_${i}_selected_team" id="id_single_bet_${i}_selected_team">
+                    <select name="single_bet_${i}_selected_team" id="id_single_bet_${i}_selected_team">
+                        <option value="">Pick a team</option>
+                    </select>
 
                     <label for="id_single_bet_${i}_is_over">Over:</label>
                     <input type="checkbox" name="single_bet_${i}_is_over" id="id_single_bet_${i}_is_over">
                 </div>
             `;
             singleBetForms.innerHTML += formHtml;
+
+        }
+
+        // need to render the single bet forms first, then we can add event listener to the selected game 
+        // on the single bet form
+        for (let i = 0; i < numForms; i++) {
+            // Populate the "Selected Team" dropdown based on the selected game
+            const gameSelect = document.getElementById(`id_single_bet_${i}_game`);
+            const teamSelect = document.getElementById(`id_single_bet_${i}_selected_team`);
+            const betTypeSelect = document.getElementById(`id_single_bet_${i}_single_bet_type`);
+            const overCheckbox = document.getElementById(`id_single_bet_${i}_is_over`);
+
+            gameSelect.addEventListener('change', () => {
+                const selectedGame = games.find(game => game.id == gameSelect.value);
+                teamSelect.innerHTML = `<option value="">Pick a team</option>`;
+                if (selectedGame) {
+                    teamSelect.innerHTML += `
+                        <option value="${selectedGame.team_a}">${selectedGame.team_a}</option>
+                        <option value="${selectedGame.team_b}">${selectedGame.team_b}</option>
+                    `;
+                }
+            });
+
+            // Handle Bet Type logic
+            betTypeSelect.addEventListener('change', () => {
+                if (betTypeSelect.value === "WINNER") {
+                    teamSelect.disabled = false; // Enable Selected Team
+                    overCheckbox.disabled = true; // Disable Over checkbox
+                    overCheckbox.checked = false; // Uncheck Over checkbox
+                } else if (betTypeSelect.value === "OVER-UNDER") {
+                    teamSelect.disabled = true; // Disable Selected Team
+                    teamSelect.value = ""; // Clear Selected Team value
+                    overCheckbox.disabled = false; // Enable Over checkbox
+                } else {
+                    // Default state when no valid bet type is selected
+                    teamSelect.disabled = true;
+                    overCheckbox.disabled = true;
+                    overCheckbox.checked = false;
+                    teamSelect.value = "";
+                }
+            });
         }
     }
 

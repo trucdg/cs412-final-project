@@ -72,18 +72,38 @@ class Player(models.Model):
 
 
 class Game(models.Model):
+    LEAGUES = [
+        ("NFL", "NFL"),
+        ("NCAA", "NCAA"),
+    ]
+    name = models.CharField(max_length=200)
     team_a = models.CharField(max_length=100)  # Name of Team A
     team_b = models.CharField(max_length=100)  # Name of Team B
+    team_a_logo_url = models.URLField(
+        max_length=400,
+        null=True,
+        blank=True,
+        default="https://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpghttps://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpg",
+    )
+    team_b_logo_url = models.URLField(
+        max_length=400,
+        null=True,
+        blank=True,
+        default="https://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpghttps://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpg",
+    )
+
+    league = models.CharField(max_length=20, choices=LEAGUES, blank=False)
     game_date = models.DateField()
     fav = models.CharField(
         max_length=100,
-        help_text="Favorite team of the game.",
+        help_text="Exact match of either Team A's name or Team B's name.",
     )
 
     fav_spread = models.DecimalField(
         max_digits=4,
         decimal_places=1,
         help_text="Spread for the favorite team (i.e: 3.0, 2.5)",
+        blank=False,
     )
 
     score_team_a = models.DecimalField(
@@ -109,14 +129,20 @@ class Game(models.Model):
         null=True,
         blank=True,
         default=0.0,
-        help_text="Total points for both teams",
+        help_text="Total final points for both teams.",
     )
 
     over_under_points = models.DecimalField(
         max_digits=5,
         decimal_places=1,
-        help_text="Over/ Under points for both teams",
+        help_text="Over/ Under points for both teams.",
+        default=0.0,
+        blank=False,
     )
+
+    class Meta:
+        # Add a unique constraint to ensure no duplicate games with the same date and teams
+        unique_together = ("game_date", "team_a", "team_b")
 
     def determine_winner(self):
         """
@@ -135,6 +161,7 @@ class Game(models.Model):
                 and self.score_team_b == 0.00  # when game hasn't started
             )
         ):
+            print(f"Game.determine_winner(): {self} points not available yet.")
             return None  # Scores not available
 
         # Adjust scores based on the favorite and underdog
@@ -168,7 +195,7 @@ class Game(models.Model):
             or self.over_under_points is None
             or self.over_under_points == Decimal(0.00)
         ):
-            print(f"Game.determine_winner(): {self} points not available yet.")
+            print(f"Game.determine_over_under(): {self} points not available yet.")
             return None
 
         # here, self.total_points != 0.00 (default value)
@@ -185,10 +212,15 @@ class Game(models.Model):
         if self.score_team_a is not None and self.score_team_b is not None:
             self.total_points = self.score_team_a + self.score_team_b
 
+        # get short name form for each team
+        team_a_short = self.team_a.split()[-1]
+        team_b_short = self.team_b.split()[-1]
+        self.name = f"{team_a_short}@{team_b_short}"
+
         return super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.team_a}@{self.team_b}"
+        return self.name
 
 
 class SingleBet(models.Model):

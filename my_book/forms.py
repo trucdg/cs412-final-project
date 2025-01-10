@@ -18,6 +18,7 @@ class GameForm(forms.ModelForm):
     class Meta:
         model = Game
         fields = [
+            "league",
             "team_a",
             "team_b",
             "game_date",
@@ -25,10 +26,12 @@ class GameForm(forms.ModelForm):
             "fav_spread",
             "score_team_a",
             "score_team_b",
+            "total_points",
             "over_under_points",
         ]
 
         labels = {
+            "league": "League",
             "team_a": "Team A",
             "team_b": "Team B",
             "game_date": "Game Date",
@@ -36,12 +39,40 @@ class GameForm(forms.ModelForm):
             "fav_spread": "Spread",
             "score_team_a": "Score (Team A)",
             "score_team_b": "Score (Team B)",
+            "total_points": "Total Points for Both Teams",
             "over_under_points": "Over/Under Points",
         }
 
         widgets = {
             "game_date": forms.DateInput(attrs={"type": "date"}),
         }
+
+    def clean_fav(self):
+        """
+        Ensure fav matches either team_a or team_b
+        """
+        fav = self.cleaned_data.get("fav")
+        team_a = self.cleaned_data.get("team_a")
+        team_b = self.cleaned_data.get("team_b")
+
+        if fav not in [team_a, team_b]:
+            raise forms.ValidationError(
+                f"Favorite must be either '{team_a}' or '{team_b}'."
+            )
+
+        return fav
+
+
+class GameSearchForm(forms.Form):
+    LEAGUE_CHOICES = [
+        ("", "Select League"),
+        ("NFL", "NFL"),
+        ("NCAA", "NCAA"),
+    ]
+    league = forms.ChoiceField(choices=LEAGUE_CHOICES, label="Select League")
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date"}), label="Select Date"
+    )
 
 
 class BetTypeForm(forms.Form):

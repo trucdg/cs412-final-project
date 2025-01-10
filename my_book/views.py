@@ -3,21 +3,35 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.forms import formset_factory
 from django.views.generic import (
     ListView,
+    CreateView,
     DetailView,
     UpdateView,
     DeleteView,
     TemplateView,
 )
 from django.views import View
+from django.db.models import Q
 from .models import Player, Game, Bet, SingleBet
 from .models import Straight, Action, Parlay3, Parlay4
-from .forms import BetTypeForm, SingleBetForm, GameForm, PlayerForm, BetTypeFilterForm
+from .forms import (
+    BetTypeForm,
+    SingleBetForm,
+    GameForm,
+    GameSearchForm,
+    PlayerForm,
+    BetTypeFilterForm,
+)
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.safestring import mark_safe
 import json
 from itertools import chain
 from operator import attrgetter
 from .utils import *
+from .fetch_data import *
+from datetime import datetime
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 
 
 class HomeView(TemplateView):
@@ -29,7 +43,7 @@ class HomeView(TemplateView):
 
 
 # Player Views
-class PlayerListView(ListView):
+class PlayerListView(LoginRequiredMixin, ListView):
     """
     A View to list out Player and a summary of their betting money and payout
     - handles create new player post requests
@@ -38,6 +52,9 @@ class PlayerListView(ListView):
     model = Player
     template_name = "players/player_list.html"
     context_object_name = "players"
+
+    def get_login_url(self) -> str:
+        return reverse("login")
 
     def get_context_data(self, **kwargs):
         # Add the form to the context
@@ -71,56 +88,657 @@ class PlayerListView(ListView):
             return self.render_to_response(context)
 
 
-class PlayerUpdateView(UpdateView):
+class PlayerUpdateView(LoginRequiredMixin, UpdateView):
     model = Player
     form_class = PlayerForm
     template_name = "players/player_edit.html"
     context_object_name = "player"
+
+    def get_login_url(self) -> str:
+        return reverse("login")
 
     def get_success_url(self):
         # Redirect to the player list after editing
         return reverse_lazy("player-list")
 
 
-class PlayerDetailView(DetailView):
+class PlayerDetailView(LoginRequiredMixin, DetailView):
     model = Player
     template_name = "players/player_detail.html"
     context_object_name = "player"
 
+    def get_login_url(self) -> str:
+        return reverse("login")
 
-class PlayerDeleteView(DeleteView):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        context["bets_flat"] = self._get_player_bets_flat()
+
+        return context
+
+    def _get_player_bets_flat(self):
+        # Retrieve the current player instance
+        player = self.object
+
+        bet_querysets = {
+            "Straight": Straight.objects.filter(player=player),
+            "Action": Action.objects.filter(player=player),
+            "Parlay3": Parlay3.objects.filter(player=player),
+            "Parlay4": Parlay4.objects.filter(player=player),
+        }
+
+        # Flatten bets into a single list
+        bets_flat = []
+        index = 1
+        for bet_type, bet_list in bet_querysets.items():
+            for bet in bet_list:
+                # Extract single bets dynamically
+                single_bets = []
+                for i in range(1, 5):  # Up to 4 single bets
+                    single_bet_attr = f"single_bet{i}"
+                    if hasattr(bet, single_bet_attr):
+                        single_bet = getattr(bet, single_bet_attr, None)
+                        single_bets.append(single_bet)
+                    else:
+                        single_bets.append(None)  # Append None for missing single bets
+
+                # Add bet details
+                bets_flat.append(
+                    {
+                        "index": index,
+                        "bet_pk": bet.pk,
+                        "player_name": bet.player.name,
+                        "bet_type": bet_type,
+                        "amount": bet.bet_amount,
+                        "payout": bet.payout,
+                        "single_bet1": single_bets[0] if len(single_bets) > 0 else None,
+                        "single_bet2": single_bets[1] if len(single_bets) > 1 else None,
+                        "single_bet3": single_bets[2] if len(single_bets) > 2 else None,
+                        "single_bet4": single_bets[3] if len(single_bets) > 3 else None,
+                    }
+                )
+                index += 1
+        return bets_flat
+
+
+class PlayerDeleteView(LoginRequiredMixin, DeleteView):
     model = Player
     template_name = "players/player_delete.html"
     success_url = reverse_lazy("player-list")
     context_object_name = "player"
 
+    def get_login_url(self) -> str:
+        return reverse("login")
 
-class GameListView(View):
+
+# GAME Views
+class GameCreateView(LoginRequiredMixin, CreateView):
+    model = Game
+    form_class = GameForm
+    template_name = "games/game_create.html"
+    success_url = reverse_lazy("game-list")
+
+    def get_login_url(self) -> str:
+        return reverse("login")
+
+
+@login_required(login_url="/login/")
+def game_search_view(request):
     """
-    A view class to display a list of all games,
-    and handle create new game form submission
+    A function view to handle search game by date request to Sports API
+    To optimize:
+    - Whenever a user fetch live game data, we use that data to update all unfinished games
+    by calling __update_games_in_db()
     """
-
-    def get(self, request, *args, **kwargs):
-        games = Game.objects.all().order_by("-game_date")
-        form = GameForm()
-        return render(request, "games/game_list.html", {"games": games, "form": form})
-
-    def post(self, request, *args, **kwargs):
-        """
-        Add new game form is on the top of the GameListView
-        Thus, I use this to handle  create new game form submission
-        post to the game-list url
-        """
-        form = GameForm(request.POST)
+    if request.method == "POST":
+        form = GameSearchForm(request.POST)
         if form.is_valid():
-            form.save()  # Save the new game to the database
-            return redirect("game-list")  # Replace with the name of your games list URL
-        games = Game.objects.all().order_by("-game_date")
-        return render(request, "games/game_list.html", {"games": games, "form": form})
+            league = form.cleaned_data["league"]
+            date = form.cleaned_data["date"]
+
+            # Get games from the API
+            raw_games_data = fetch_games_by_date(league, date)
+
+            """
+            raw_games_data = {
+                "get": "games",
+                "parameters": {
+                    "league": "1",
+                    "date": "2025-01-04",
+                    "timezone": "America/New_York",
+                },
+                "errors": [],
+                "results": 2,
+                "response": [
+                    {
+                        "game": {
+                            "id": 13457,
+                            "stage": "Regular Season",
+                            "week": "Week 18",
+                            "date": {
+                                "timezone": "America/New_York",
+                                "date": "2025-01-04",
+                                "time": "16:30",
+                                "timestamp": 1736026200,
+                            },
+                            "venue": {"name": "M&T Bank Stadium", "city": "Baltimore"},
+                            "status": {
+                                "short": "FT",
+                                "long": "Finished",
+                                "timer": None,
+                            },
+                        },
+                        "league": {
+                            "id": 1,
+                            "name": "NFL",
+                            "season": "2024",
+                            "logo": "https://media.api-sports.io/american-football/leagues/1.png",
+                            "country": {
+                                "name": "USA",
+                                "code": "US",
+                                "flag": "https://media.api-sports.io/flags/us.svg",
+                            },
+                        },
+                        "teams": {
+                            "home": {
+                                "id": 5,
+                                "name": "Baltimore Ravens",
+                                "logo": "https://media.api-sports.io/american-football/teams/5.png",
+                            },
+                            "away": {
+                                "id": 9,
+                                "name": "Cleveland Browns",
+                                "logo": "https://media.api-sports.io/american-football/teams/9.png",
+                            },
+                        },
+                        "scores": {
+                            "home": {
+                                "quarter_1": 7,
+                                "quarter_2": 7,
+                                "quarter_3": 7,
+                                "quarter_4": 14,
+                                "overtime": None,
+                                "total": 35,
+                            },
+                            "away": {
+                                "quarter_1": 0,
+                                "quarter_2": 3,
+                                "quarter_3": 0,
+                                "quarter_4": 7,
+                                "overtime": None,
+                                "total": 10,
+                            },
+                        },
+                    },
+                    {
+                        "game": {
+                            "id": 13455,
+                            "stage": "Regular Season",
+                            "week": "Week 18",
+                            "date": {
+                                "timezone": "America/New_York",
+                                "date": "2025-01-04",
+                                "time": "20:00",
+                                "timestamp": 1736038800,
+                            },
+                            "venue": {"name": "Acrisure Stadium", "city": "Pittsburgh"},
+                            "status": {
+                                "short": "FT",
+                                "long": "Finished",
+                                "timer": None,
+                            },
+                        },
+                        "league": {
+                            "id": 1,
+                            "name": "NFL",
+                            "season": "2024",
+                            "logo": "https://media.api-sports.io/american-football/leagues/1.png",
+                            "country": {
+                                "name": "USA",
+                                "code": "US",
+                                "flag": "https://media.api-sports.io/flags/us.svg",
+                            },
+                        },
+                        "teams": {
+                            "home": {
+                                "id": 22,
+                                "name": "Pittsburgh Steelers",
+                                "logo": "https://media.api-sports.io/american-football/teams/22.png",
+                            },
+                            "away": {
+                                "id": 10,
+                                "name": "Cincinnati Bengals",
+                                "logo": "https://media.api-sports.io/american-football/teams/10.png",
+                            },
+                        },
+                        "scores": {
+                            "home": {
+                                "quarter_1": 0,
+                                "quarter_2": 7,
+                                "quarter_3": 0,
+                                "quarter_4": 10,
+                                "overtime": None,
+                                "total": 17,
+                            },
+                            "away": {
+                                "quarter_1": 10,
+                                "quarter_2": 3,
+                                "quarter_3": 3,
+                                "quarter_4": 3,
+                                "overtime": None,
+                                "total": 19,
+                            },
+                        },
+                    },
+                ],
+            }
+            """
+
+            raw_games_response = raw_games_data.get("response", [])
+
+            if raw_games_response is None:
+                print(f"views.game_search_view(): Failed to fetch games data.")
+                return None
+
+            # Preprocess games into a clean format
+            games = []
+            for raw_game in raw_games_response:
+                game = {
+                    "league": raw_game["league"]["name"],
+                    "stage": raw_game["game"]["stage"],
+                    "week": raw_game["game"]["week"],
+                    "date": raw_game["game"]["date"]["date"],
+                    "time": raw_game["game"]["date"]["time"],
+                    "team_a": raw_game["teams"]["away"]["name"],
+                    "team_a_logo_url": raw_game["teams"]["away"]["logo"],
+                    "team_b": raw_game["teams"]["home"]["name"],
+                    "team_b_logo_url": raw_game["teams"]["home"]["logo"],
+                    "status": raw_game["game"]["status"]["long"],
+                    "score_team_a": raw_game["scores"]["away"]["total"],
+                    "score_team_b": raw_game["scores"]["home"]["total"],
+                }
+
+                games.append(game)
+
+            # Convert each game to JSON format
+            for game in games:
+                game["json_data"] = json.dumps(game)
+
+            # Prepare lists for query
+            team_a_list = [game["team_a"] for game in games]
+            team_b_list = [game["team_b"] for game in games]
+            game_dates = [
+                datetime.strptime(game["date"], "%Y-%m-%d").date() for game in games
+            ]
+
+            # get games query set from db that match the same teams and date
+            db_games_queryset = Game.objects.filter(
+                Q(
+                    team_a__in=team_a_list,
+                    team_b__in=team_b_list,
+                    game_date__in=game_dates,
+                )
+                | Q(
+                    team_a__in=team_b_list,
+                    team_b__in=team_a_list,
+                    game_date__in=game_dates,
+                )
+            )
+            added_games = set(
+                db_games_queryset.values_list("team_a", "team_b", "game_date")
+            )
+
+            # Normalize `date` in `games` and check membership
+            for game in games:
+                game_date_obj = datetime.strptime(game["date"], "%Y-%m-%d").date()
+                game["is_added"] = (
+                    game["team_a"],
+                    game["team_b"],
+                    game_date_obj,
+                ) in added_games or (
+                    game["team_b"],
+                    game["team_a"],
+                    game_date_obj,
+                ) in added_games
+
+            # update unfinished games in database
+            __update_game_in_db(games, db_games_queryset)
+
+            # Display games in the template
+            return render(
+                request,
+                "games/game_search.html",
+                {"form": form, "games": games},
+            )
+    else:
+        form = GameSearchForm()
+
+    return render(request, "games/game_search.html", {"form": form})
 
 
-class GameDetailView(DetailView):
+def __update_game_in_db(games_data, db_games_queryset):
+    """
+    method for optimization purpose:
+    - whenever user fetch live game data, use that game data to update
+    unfinished games in db
+    input:
+     - games_data: data fetched from live api
+     - added_games: queryset of games in the database with same team_a, team_b and date
+    """
+
+    unfinished_games_qs = db_games_queryset.filter(
+        Q(total_points=0.0) | Q(total_points__isnull=True)
+    )
+
+    # Build a lookup dictionary from games_data
+    games_lookup = {
+        (
+            game["team_a"],
+            game["team_b"],
+            datetime.strptime(game["date"], "%Y-%m-%d").date(),
+        ): game
+        for game in games_data
+    }
+
+    updated_count = 0
+
+    # Iterate through unfinished games and update them
+    for db_game in unfinished_games_qs:
+        # Check if the game exists in the live data (accounting for team order)
+        game_key = (db_game.team_a, db_game.team_b, db_game.game_date)
+        reverse_game_key = (db_game.team_b, db_game.team_a, db_game.game_date)
+
+        live_game_data = games_lookup.get(game_key) or games_lookup.get(
+            reverse_game_key
+        )
+
+        if live_game_data:
+            fields_to_update = []
+            update_total = False
+
+            if live_game_data.get("score_team_a") not in ["None", None]:
+                db_game.score_team_a = float(live_game_data["score_team_a"])
+                fields_to_update.append("score_team_a")
+                update_total = True
+
+            if live_game_data.get("score_team_b") not in ["None", None]:
+                db_game.score_team_b = float(live_game_data["score_team_b"])
+                fields_to_update.append("score_team_b")
+                update_total = True
+
+            if update_total:
+                db_game.total_points = db_game.score_team_a + db_game.score_team_b
+                fields_to_update.append("total_points")
+
+            if live_game_data.get("team_a_logo_url") not in ["None", None]:
+                db_game.team_a_logo_url = live_game_data["team_a_logo_url"]
+                fields_to_update.append("team_a_logo_url")
+
+            if live_game_data.get("team_b_logo_url") not in ["None", None]:
+                db_game.team_b_logo_url = live_game_data["team_b_logo_url"]
+                fields_to_update.append("team_b_logo_url")
+
+            # Save the game only if there are fields to update
+            if fields_to_update:
+                db_game.save(update_fields=fields_to_update)
+                updated_count += 1
+
+    print(
+        f"views.__update_game_in_db():Updated {updated_count} unfinished games in the database."
+    )
+    return updated_count
+
+
+@login_required(login_url="/login/")
+def game_review_view(request):
+    """
+    Review selected games resulted from the live search
+    In this view, user need to insert the game favorite team and the spread
+    before the game is added to database
+    """
+    if request.method == "POST":
+        # print("REQUEST.POST", request.POST)
+        selected_games_json = request.POST.getlist("selected_games")
+
+        # Parse the JSON strings into Python dictionaries
+        selected_games = [json.loads(game_json) for game_json in selected_games_json]
+
+        return render(request, "games/game_review.html", {"games": selected_games})
+    return redirect("game-search")
+
+
+@login_required(login_url="/login/")
+def add_reviewed_games_to_db_view(request):
+    """
+    handle POST request to add-reviewed-games url and add games into database
+    - reviewed games should have fav and fav_spread provided by user along
+    with all information pulled from live api
+
+    example of a request.POST with 2 reviewed games:
+    ADD GAME request.POST
+    <QueryDict: {'csrfmiddlewaretoken': ['kdynGLGgTZ5D'],
+    'games[0][game_date]': ['2025-01-04'],
+    'games[0][league]': ['NFL'],
+    'games[0][team_a]': ['Baltimore Ravens'],
+    'games[0][team_b]': ['Cleveland Browns'],
+    'games[0][score_team_a]': ['35'],
+    'games[0][score_team_b]': ['10'],
+    'games[0][team_a_logo_url]': ['https://media.api-sports.io/american-football/teams/5.png'],
+    'games[0][team_b_logo_url]': ['https://media.api-sports.io/american-football/teams/9.png'],
+    'games[0][fav_spread]': ['1.2'],
+    'games[0][over_under_points]' : '[41.0]',
+    'games[0][fav]': ['Baltimore Ravens'],
+    'games[1][game_date]': ['2025-01-04'],
+    'games[1][league]': ['NFL'],
+    'games[1][team_a]': ['Pittsburgh Steelers'],
+    'games[1][team_b]': ['Cincinnati Bengals'],
+    'games[1][score_team_a]': ['17'],
+    'games[1][score_team_b]': ['19'],
+    'games[1][team_a_logo_url]': ['https://media.api-sports.io/american-football/teams/22.png'],
+    'games[1][team_b_logo_url]': ['https://media.api-sports.io/american-football/teams/10.png'],
+    'games[1][fav_spread]': ['1.3'],
+    'games[1][over_under_points]' : '[42.0]',
+    'games[1][fav]': ['Pittsburgh Steelers']}>
+    """
+    if request.method == "POST":
+        try:
+            games_data = []
+            # Iterate through the request.POST to gather game data
+            for key, value in request.POST.items():
+                if key.startswith("games"):
+                    # Parse the incoming nested dictionary structure
+                    key_parts = key.split("[")
+                    index = int(key_parts[1][:-1])  # Extract the index from 'games[0]'
+                    field_name = key_parts[2][:-1]  # Extract the field name ('team_a')
+
+                    # Ensure the games_data list is properly initialized
+                    while len(games_data) <= index:
+                        games_data.append({})
+                    games_data[index][field_name] = value
+
+            print("in ADD, games_data=", games_data)
+
+            # Validate and save each game entry
+            saved_games = []
+            default_logo = "https://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpghttps://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpg"
+            for game_data in games_data:
+                game, created = Game.objects.update_or_create(
+                    game_date=game_data.get("game_date"),
+                    team_a=game_data.get("team_a"),
+                    team_b=game_data.get("team_b"),
+                    # if game is found, the fields in defaults are updated with the new values
+                    defaults={
+                        "league": game_data.get("league"),
+                        "team_a_logo_url": (
+                            default_logo
+                            if game_data.get("team_a_logo_url") not in ["None", None]
+                            else game_data.get("team_a_logo_url")
+                        ),
+                        "team_b_logo_url": (
+                            default_logo
+                            if game_data.get("team_b_logo_url") not in ["None", None]
+                            else game_data.get("team_b_logo_url")
+                        ),
+                        "fav_spread": float(game_data.get("fav_spread")),
+                        "over_under_points": float(game_data.get("over_under_points")),
+                        "fav": game_data.get("fav"),
+                        "score_team_a": (
+                            float(game_data.get("score_team_a", 0.0))
+                            if game_data.get("score_team_a") not in ["None", None]
+                            else 0.0
+                        ),
+                        "score_team_b": (
+                            float(game_data.get("score_team_b", 0.0))
+                            if game_data.get("score_team_b") not in ["None", None]
+                            else 0.0
+                        ),
+                    },
+                )
+                if created:
+                    saved_games.append(
+                        {
+                            "game_date": game.game_date,
+                            "team_a": game.team_a,
+                            "team_b": game.team_b,
+                            "score_team_a": game.score_team_a,
+                            "score_team_b": game.score_team_b,
+                            "team_a_logo_url": game.team_a_logo_url,
+                            "team_b_logo_url": game.team_b_logo_url,
+                            "fav": game.fav,
+                            "fav_spread": game.fav_spread,
+                            "over_under_points": game.over_under_points,
+                            "created": created,
+                        }
+                    )
+
+            return render(
+                request,
+                "games/game_successfully_added.html",
+                {"saved_games": saved_games},
+            )
+        except Exception as e:
+            print("views.add_reviewed_games_to_db_view() Exception: ", e)
+            return redirect("game-review")
+    return redirect("game-review")
+
+
+@login_required(login_url="/login/")
+def get_game_results_view(request):
+    """
+    Fetch games for dates with unfinished games and update the database.
+    """
+
+    league = request.GET.get("league")
+
+    if league not in ["NFL", "NCAA"]:
+        print("views.get_game_results_view(): Error! Invalid league")
+        messages.error(request, "Invalid league specified.")
+        return redirect("game-list")
+
+    unfinished_games_qs = Game.objects.filter(
+        Q(total_points=0.0) | Q(total_points__isnull=True)
+    )
+
+    unfinished_game_dates = unfinished_games_qs.values_list(
+        "game_date", flat=True
+    ).distinct()
+
+    # Fetch and update games
+    updated_count = 0
+    for game_date in unfinished_game_dates:
+        raw_games_data = fetch_games_by_date(league, game_date)
+        raw_games_response = raw_games_data.get("response", [])
+
+        if not raw_games_response:
+            continue
+
+        # Preprocess games into a clean format
+        games_lookup = {}
+        for raw_game in raw_games_response:
+            game_key = (
+                raw_game["teams"]["away"]["name"],
+                raw_game["teams"]["home"]["name"],
+                raw_game["game"]["date"]["date"],
+            )
+            games_lookup[game_key] = {
+                "team_a": raw_game["teams"]["away"]["name"],
+                "team_b": raw_game["teams"]["home"]["name"],
+                "score_team_a": raw_game["scores"]["away"]["total"],
+                "score_team_b": raw_game["scores"]["home"]["total"],
+                "team_a_logo_url": raw_game["teams"]["away"]["logo"],
+                "team_b_logo_url": raw_game["teams"]["home"]["logo"],
+            }
+
+        # Update unfinished games in the database
+        for db_game in unfinished_games_qs.filter(game_date=game_date):
+
+            game_key = (db_game.team_a, db_game.team_b, str(db_game.game_date))
+            reverse_game_key = (db_game.team_b, db_game.team_a, str(db_game.game_date))
+
+            live_game_data = games_lookup.get(game_key) or games_lookup.get(
+                reverse_game_key
+            )
+
+            if live_game_data:
+                fields_to_update = []
+                update_total = False
+
+                if live_game_data.get("score_team_a") not in ["None", None]:
+                    db_game.score_team_a = float(live_game_data["score_team_a"])
+                    fields_to_update.append("score_team_a")
+                    update_total = True
+
+                if live_game_data.get("score_team_b") not in ["None", None]:
+                    db_game.score_team_b = float(live_game_data["score_team_b"])
+                    fields_to_update.append("score_team_b")
+                    update_total = True
+
+                if update_total:
+                    db_game.total_points = db_game.score_team_a + db_game.score_team_b
+                    fields_to_update.append("total_points")
+
+                if live_game_data.get("team_a_logo_url") not in ["None", None]:
+                    db_game.team_a_logo_url = live_game_data["team_a_logo_url"]
+                    fields_to_update.append("team_a_logo_url")
+
+                if live_game_data.get("team_b_logo_url") not in ["None", None]:
+                    db_game.team_b_logo_url = live_game_data["team_b_logo_url"]
+                    fields_to_update.append("team_b_logo_url")
+
+                # Save the game only if there are fields to update
+                if fields_to_update:
+                    db_game.save(update_fields=fields_to_update)
+                    updated_count += 1
+
+    if updated_count:
+        messages.success(
+            request, f"Successfully updated {updated_count} games for {league}."
+        )
+    else:
+        messages.info(request, f"No games to update for {league}.")
+
+    return redirect("game-list")
+
+
+@login_required(login_url="/login/")
+def game_list_view(request):
+    """
+    A function view to display a lst of all games
+    """
+    nfl_games = Game.objects.filter(league="NFL").order_by("-game_date")
+    ncaa_games = Game.objects.filter(league="NCAA").order_by("-game_date")
+    return render(
+        request,
+        "games/game_list.html",
+        {
+            "nfl_games": nfl_games,
+            "ncaa_games": ncaa_games,
+        },
+    )
+
+
+class GameDetailView(LoginRequiredMixin, DetailView):
     """
     Class-based view for displaying detailed information about a specific game.
     """
@@ -129,14 +747,11 @@ class GameDetailView(DetailView):
     template_name = "games/game_detail.html"
     context_object_name = "game"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        game = self.get_object()
-
-        return context
+    def get_login_url(self) -> str:
+        return reverse("login")
 
 
-class GameUpdateView(UpdateView):
+class GameUpdateView(LoginRequiredMixin, UpdateView):
     """
     A view class to update Game detail
     """
@@ -146,18 +761,27 @@ class GameUpdateView(UpdateView):
     template_name = "games/game_edit.html"
     success_url = reverse_lazy("game-list")
 
+    def get_login_url(self) -> str:
+        return reverse("login")
 
-class GameDeleteView(DeleteView):
+
+class GameDeleteView(LoginRequiredMixin, DeleteView):
     model = Game
     template_name = "games/game_delete.html"
     success_url = reverse_lazy("game-list")
     context_object_name = "game"
 
+    def get_login_url(self) -> str:
+        return reverse("login")
+
 
 # Bet Views
-class BetListView(ListView):
+class BetListView(LoginRequiredMixin, ListView):
     template_name = "bets/bet_list.html"
     SingleBetFormSet = formset_factory(SingleBetForm, extra=0)
+
+    def get_login_url(self) -> str:
+        return reverse("login")
 
     def get_queryset(self):
         """
@@ -204,7 +828,13 @@ class BetListView(ListView):
 
         # Fetch all available games
         games = Game.objects.all().values(
-            "id", "team_a", "team_b", "game_date", "fav_spread", "over_under_points"
+            "id",
+            "team_a",
+            "team_b",
+            "name",
+            "game_date",
+            "fav_spread",
+            "over_under_points",
         )
 
         # Flatten the bet objects into a list with global index
@@ -238,12 +868,6 @@ class BetListView(ListView):
 
         bet_type_form = BetTypeForm(request.POST)
         single_bet_forms = self.SingleBetFormSet(request.POST)
-
-        print(f"request.POST: {request.POST}")
-
-        # print(f"in POST: bet_type_form.is_valid={bet_type_form.is_valid()}")
-        # print(f"in POST: single_bet_forms.is_valid={single_bet_forms.is_valid()}")
-        # print(f"in POST: {single_bet_forms.errors}")
 
         if not single_bet_forms.is_valid():
             for form in single_bet_forms:
@@ -303,8 +927,6 @@ class BetListView(ListView):
                 single_bet.save()
 
                 single_bets.append(single_bet)
-
-                print(f"BetListView.post(): created SingleBet= {single_bet}")
 
             except Game.DoesNotExist:
                 print(
@@ -375,7 +997,7 @@ class BetListView(ListView):
             # Validate and save the bet instance
             bet.full_clean()  # Run model validation
             bet.save()
-            print(f"BetListView.create_bet(): Created {bet_type} bet: {bet}")
+            # print(f"BetListView.create_bet(): Created {bet_type} bet: {bet}")
             return bet
 
         except Exception as e:
@@ -435,6 +1057,7 @@ class BetListView(ListView):
                         "index": index,
                         "bet_pk": bet.pk,
                         "player_name": bet.player.name,
+                        "player_id": bet.player.id,
                         "bet_type": bet_type,
                         "amount": bet.bet_amount,
                         "payout": bet.payout,
@@ -459,6 +1082,7 @@ class BetListView(ListView):
         return ""
 
 
+@login_required(login_url="/login/")
 def delete_bet(request, bet_type, bet_id):
     """
     this is a function based view that shows the bet delete confirmation page
@@ -496,10 +1120,13 @@ def delete_bet(request, bet_type, bet_id):
     )
 
 
-class CalculatePayoutView(View):
+class CalculatePayoutView(LoginRequiredMixin, View):
     """
     A view class to calculate the payout for all bets if scores available
     """
+
+    def get_login_url(self) -> str:
+        return reverse("login")
 
     def post(self, request, *args, **kwargs):
         """
@@ -516,14 +1143,14 @@ class CalculatePayoutView(View):
         # Iterate through each bet and calculate payout
         for bet_queryset in all_bets:
             for bet in bet_queryset:  # Iterate through each individual bet
-                bet.calculate_payout()  # Call calculate_payout on each bet
-                # print(f"CALCULATE bet {bet}")
-                # print(f"CALCULATE bet_payout {bet.payout}")
+                bet.calculate_payout()
+                bet.save(update_fields=["payout"])
 
         # Redirect back to the bet list page
         return redirect("bet-list")
 
 
+@login_required(login_url="/login/")
 def insights_page(request):
     # Generate the graph for comparing bet types
     bet_type_graph = generate_bet_type_comparison_graph()
