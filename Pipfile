@@ -9,6 +9,7 @@ gunicorn = "*"
 beautifulsoup4 = "*"
 requests = "*"
 plotly = "*"
+django-environ = "*"
 
 [dev-packages]
 
