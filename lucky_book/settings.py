@@ -20,6 +20,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
+###### Read Env Variables
+########################
+import environ
+
+# Initialize environment variables
+env = environ.Env()
+environ.Env.read_env(f"{BASE_DIR}/.env")
+
+API_KEY = env("API_KEY")
+API_HOST = env("API_HOST")
+DEBUG = env.bool("DEBUG", default=False)
+
+###########################
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-p5nlnq2e%ctvainq0ml%br#_-v1!e0gag+i$5#2ezsug+%^lbh"
 
