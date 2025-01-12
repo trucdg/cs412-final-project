@@ -335,6 +335,8 @@ def game_search_view(request):
             }
             """
 
+            # NOTE: in the API,game['status']['long'] for finished game is Finished or "Final/OT"
+
             raw_games_response = raw_games_data.get("response", [])
 
             if raw_games_response is None:
@@ -360,6 +362,8 @@ def game_search_view(request):
                 }
 
                 games.append(game)
+
+            print("In GAME SEARCH VIEW:", raw_games_response)
 
             # Convert each game to JSON format
             for game in games:
@@ -427,9 +431,7 @@ def __update_game_in_db(games_data, db_games_queryset):
      - added_games: queryset of games in the database with same team_a, team_b and date
     """
 
-    unfinished_games_qs = db_games_queryset.filter(
-        Q(total_points=0.0) | Q(total_points__isnull=True)
-    )
+    unfinished_games_qs = db_games_queryset.filter(is_finished=False)
 
     # Build a lookup dictionary from games_data
     games_lookup = {
@@ -478,6 +480,10 @@ def __update_game_in_db(games_data, db_games_queryset):
             if live_game_data.get("team_b_logo_url") not in ["None", None]:
                 db_game.team_b_logo_url = live_game_data["team_b_logo_url"]
                 fields_to_update.append("team_b_logo_url")
+
+            if live_game_data.get("status") in ["Finished", "Final/OT"]:
+                db_game.is_finished = True
+                fields_to_update.append("is_finished")
 
             # Save the game only if there are fields to update
             if fields_to_update:
@@ -557,6 +563,8 @@ def add_reviewed_games_to_db_view(request):
                         games_data.append({})
                     games_data[index][field_name] = value
 
+            print("in ADD, games_data=", games_data)
+
             # Validate and save each game entry
             saved_games = []
             default_logo = "https://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpghttps://as2.ftcdn.net/v2/jpg/05/97/47/95/1000_F_597479556_7bbQ7t4Z8k3xbAloHFHVdZIizWK1PdOo.jpg"
@@ -568,6 +576,11 @@ def add_reviewed_games_to_db_view(request):
                     # if game is found, the fields in defaults are updated with the new values
                     defaults={
                         "league": game_data.get("league"),
+                        "is_finished": (
+                            True
+                            if game_data.get("status") in ["Finished", "Final/OT"]
+                            else False
+                        ),
                         "team_a_logo_url": (
                             game_data.get("team_a_logo_url")
                             if game_data.get("team_a_logo_url") not in ["None", None]
@@ -634,9 +647,7 @@ def get_game_results_view(request):
         messages.error(request, "Invalid league specified.")
         return redirect("game-list")
 
-    unfinished_games_qs = Game.objects.filter(
-        Q(total_points=0.0) | Q(total_points__isnull=True)
-    )
+    unfinished_games_qs = Game.objects.filter(is_finished=False)
 
     unfinished_game_dates = unfinished_games_qs.values_list(
         "game_date", flat=True
@@ -666,6 +677,7 @@ def get_game_results_view(request):
                 "score_team_b": raw_game["scores"]["home"]["total"],
                 "team_a_logo_url": raw_game["teams"]["away"]["logo"],
                 "team_b_logo_url": raw_game["teams"]["home"]["logo"],
+                "status": raw_game["game"]["status"]["long"],
             }
 
         # Update unfinished games in the database
@@ -681,6 +693,11 @@ def get_game_results_view(request):
             if live_game_data:
                 fields_to_update = []
                 update_total = False
+
+                if live_game_data.get("status") in ["Finished", "Final/OT"]:
+                    db_game.is_finished = True
+                    fields_to_update.append("is_finished")
+                    update_total = True
 
                 if live_game_data.get("score_team_a") not in ["None", None]:
                     db_game.score_team_a = float(live_game_data["score_team_a"])
