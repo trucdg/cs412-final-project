@@ -363,8 +363,6 @@ def game_search_view(request):
 
                 games.append(game)
 
-            print("In GAME SEARCH VIEW:", raw_games_response)
-
             # Convert each game to JSON format
             for game in games:
                 game["json_data"] = json.dumps(game)
