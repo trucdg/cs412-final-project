@@ -140,6 +140,10 @@ class Game(models.Model):
         blank=False,
     )
 
+    is_finished = models.BooleanField(
+        default=False, help_text="Indicates if the game is finished."
+    )
+
     class Meta:
         # Add a unique constraint to ensure no duplicate games with the same date and teams
         unique_together = ("game_date", "team_a", "team_b")
@@ -153,16 +157,9 @@ class Game(models.Model):
         - 'Tie' otherwise
         - None if no result is available
         """
-        if (
-            self.score_team_a is None
-            or self.score_team_b is None
-            or (
-                self.score_team_a == 0.00
-                and self.score_team_b == 0.00  # when game hasn't started
-            )
-        ):
+        if not self.is_finished:
             print(f"Game.determine_winner(): {self} points not available yet.")
-            return None  # Scores not available
+            return None
 
         # Adjust scores based on the favorite and underdog
         if self.fav.lower() == self.team_a.lower():
@@ -189,12 +186,7 @@ class Game(models.Model):
         - 'Over', 'Under' or 'Tie' if total points for both team == over_under_points
         - None if total_points are not available
         """
-        if (
-            self.total_points is None
-            or self.total_points == Decimal(0.00)
-            or self.over_under_points is None
-            or self.over_under_points == Decimal(0.00)
-        ):
+        if not self.is_finished:
             print(f"Game.determine_over_under(): {self} points not available yet.")
             return None
 
